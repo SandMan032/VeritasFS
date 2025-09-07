@@ -9,14 +9,14 @@ class FileProcessor:
         self.file_chunks = {}
 
         # Use folder relative to script location
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        self.input_folder = os.path.join(script_dir, self.folder_name)
+        self.projectroot= os.path.abspath(os.getcwd())
+        self.input_folder = os.path.join(self.projectroot, self.folder_name)
 
         if not os.path.exists(self.input_folder):
             raise FileNotFoundError(f"❌ Folder '{folder_name}' not found next to script.")
 
         # Create output folder next to input
-        self.output_folder = os.path.join(script_dir, "data/output")
+        self.output_folder = os.path.join(self.projectroot, "data/output")
         os.makedirs(self.output_folder, exist_ok=True)
 
         print(f"📂 Input folder: {self.input_folder}")

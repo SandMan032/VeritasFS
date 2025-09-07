@@ -1,1 +1,1 @@
-Place any file you want to chunk and reconstruct in this folder!!!!
+Place any file you want to chunk and reconstruct in the input folder!!
