@@ -18,6 +18,10 @@ dist/
 *egg-info/.
 
 .env
+.venv/
+
+
+
 
 *.log
 .DS_Store
