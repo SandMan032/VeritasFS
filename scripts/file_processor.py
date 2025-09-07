@@ -1,54 +1,62 @@
-import math
+
 import os
+import math
 
-def read_pdf_as_bytes(pdf_path):
-    with open(pdf_path, "rb") as f:
-        data = f.read()
-    print(f"Read {len(data)} bytes from {pdf_path}")
-    return data
+class FileProcessor:
+    def __init__(self, folder_name="data/input", num_chunks=256):
+        self.folder_name = folder_name
+        self.num_chunks = num_chunks
+        self.file_chunks = {}
 
-def chunk_raw_bytes(data, num_chunks=256):
-    print(f"\nChunking PDF into {num_chunks} parts...")
-    chunk_size = math.ceil(len(data) / num_chunks)
-    print(f"Each chunk size (approx): {chunk_size} bytes")
+        # Use folder relative to script location
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        self.input_folder = os.path.join(script_dir, self.folder_name)
 
-    chunks = []
-    for i in range(num_chunks):
-        start = i * chunk_size
-        end = min(start + chunk_size, len(data))
-        chunk_data = data[start:end]
-        token = f"CHUNK_{i:03d}"
-        chunks.append({
-            "token": token,
-            "data": chunk_data
-        })
-        print(f"Created {token} with {len(chunk_data)} bytes")
+        if not os.path.exists(self.input_folder):
+            raise FileNotFoundError(f"❌ Folder '{folder_name}' not found next to script.")
 
-    print(f"Total chunks created: {len(chunks)}")
-    return chunks
+        # Create output folder next to input
+        self.output_folder = os.path.join(script_dir, "data/output")
+        os.makedirs(self.output_folder, exist_ok=True)
 
-def reassemble_chunks(chunks):
-    print("\nReassembling chunks back into raw PDF...")
-    sorted_chunks = sorted(chunks, key=lambda x: x["token"])
-    reconstructed_data = b''.join(chunk["data"] for chunk in sorted_chunks)
-    print(f"Reassembled PDF size: {len(reconstructed_data)} bytes")
-    return reconstructed_data
+        print(f"📂 Input folder: {self.input_folder}")
+        print(f"📁 Output folder: {self.output_folder}")
 
-def save_pdf_from_bytes(data, output_path):
-    with open(output_path, "wb") as f:
-        f.write(data)
-    print(f"Final reconstructed PDF saved to: {output_path}")
+    def read_file_bytes(self, file_path):
+        with open(file_path, "rb") as f:
+            return f.read()
 
-pdf_path = r"./data/sample.pdf"
-output_path = r"./data/reconstructed_output.pdf"
+    def chunk_bytes(self, data):
+        chunk_size = math.ceil(len(data) / self.num_chunks)
+        return [
+            {"token": f"CHUNK_{i:03d}", "data": data[i * chunk_size : min((i + 1) * chunk_size, len(data))]}
+            for i in range(self.num_chunks)
+        ]
 
-pdf_bytes = read_pdf_as_bytes(pdf_path)
-chunks = chunk_raw_bytes(pdf_bytes, num_chunks=256)
-reconstructed_bytes = reassemble_chunks(chunks)
+    def transmit(self):
+        files = [f for f in os.listdir(self.input_folder) if os.path.isfile(os.path.join(self.input_folder, f))]
+        if not files:
+            print("⚠️ No files found in input folder.")
+            return
 
-if pdf_bytes == reconstructed_bytes:
-    print("Reconstruction successful — bytes match original perfectly!")
-else:
-    print("Reconstruction failed — mismatch detected!")
+        for filename in files:
+            input_path = os.path.join(self.input_folder, filename)
+            data = self.read_file_bytes(input_path)
+            chunks = self.chunk_bytes(data)
+            self.file_chunks[filename] = {"chunks": chunks, "original_data": data}
+            print(f"📤 Transmitted '{filename}' into {len(chunks)} chunks.")
 
-save_pdf_from_bytes(reconstructed_bytes, output_path)
+    def reassemble(self):
+        for filename, info in self.file_chunks.items():
+            sorted_chunks = sorted(info["chunks"], key=lambda x: x["token"])
+            reconstructed_data = b''.join(chunk["data"] for chunk in sorted_chunks)
+
+            output_path = os.path.join(self.output_folder, f"reconstructed_{filename}")
+            with open(output_path, "wb") as f:
+                f.write(reconstructed_data)
+
+            if reconstructed_data == info["original_data"]:
+                print(f"✅ '{filename}' reconstructed successfully ({len(reconstructed_data)} bytes)")
+            else:
+                print(f"⚠️ '{filename}' reconstruction mismatch!")
+
